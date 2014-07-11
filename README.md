@@ -7,7 +7,7 @@ A notification contains actions which are rendered as buttons, when a button is 
 
 It is envisaged that notifications would form part of a semi-automated workflow. The workflow would pop up a notification whenever user interaction is needed.
 
-This project is a work in progress.
+This project is a work in progress.  ![Screenshot](https://github.com/t-tang/Notfication-Client/blob/master/notification-client.jpg)
 
 __Technical Notes__
 
