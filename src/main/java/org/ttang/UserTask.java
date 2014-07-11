@@ -9,19 +9,21 @@ import java.util.UUID;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ReflectionToStringBuilder;
+import org.apache.commons.lang3.exception.ContextedException;
 import org.ttang.jersey.messages.MessageType;
 import org.ttang.objectstore.ObjectStoreItem;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 @MessageType(name="UserTask")
 public class UserTask extends ObjectStoreItem<String> {
 	
-	// PENDING = waiting for user to trigger an action
+	// OUTSTANDING = waiting for user to trigger an action
 	// ACTIONED = waiting for the result of the action (primarily for async result)
 	// COMPLETED = completed, the end state for this user task
 	// For a synchronous operation, the ui may not see the ACTIONED state.
-	private enum Status { PENDING, ACTIONED, COMPLETED }
+	private enum Status { OUTSTANDING, ACTIONED, COMPLETED }
 
 	private String id;
 	private Date creationTime;
@@ -126,16 +128,23 @@ public class UserTask extends ObjectStoreItem<String> {
 		return userStatusMessage;
 	}
 
-	public boolean isPending() {
-		return status == Status.PENDING;
+	@JsonIgnore
+	public boolean isOutstanding() {
+		return status == Status.OUTSTANDING;
 	}
 
+	/**
 	public boolean isActioned() {
 		return status == Status.ACTIONED;
 	}
 
 	public boolean isCompleted() {
 		return status == Status.COMPLETED;
+	}
+	**/
+	
+	public Status getStatus() {
+		return status;
 	}
 	
 	public String getAction() {
@@ -154,10 +163,12 @@ public class UserTask extends ObjectStoreItem<String> {
 		return completionTime;
 	}
 	
-	public UserTask action(String action, String actionedBy) throws Exception {
+	public UserTask action(String action, String actionedBy)
+			throws ContextedException {
 
-		if (status != Status.PENDING) {
-			throw new Exception("Expected status==PENDING");
+		if (status != Status.OUTSTANDING) {
+			throw new ContextedException("Expected status==OUTSTANDING")
+				.addContextValue("this", this);
 		}
 
 		status = Status.ACTIONED;
@@ -169,9 +180,10 @@ public class UserTask extends ObjectStoreItem<String> {
 		return this; // for chaining into complete
 	}
 	
-	public void complete() throws Exception {
+	public void complete() throws ContextedException {
 		if (status != Status.ACTIONED) {
-			throw new Exception("Expected status==ACTIONED");
+			throw new ContextedException("Expected status==ACTIONED")
+				.addContextValue("this", this);
 		}
 
 		// set completion information
@@ -206,8 +218,14 @@ public class UserTask extends ObjectStoreItem<String> {
 			this.userMessage = userMessage;
 		}
 	
-		public Builder action(String label) throws URISyntaxException {
-			URI uri = new URI("usertasks/".concat(userTaskId));
+		public Builder action(String label) throws ContextedException {
+			URI uri;
+			try {
+				uri = new URI("usertasks/".concat(userTaskId));
+			} catch (URISyntaxException e) {
+				throw new ContextedException(e)
+					.addContextValue("this",this);
+			}
 			actions.add(UserAction.create(userTaskId, label, uri));
 			return this;
 		}
@@ -215,8 +233,13 @@ public class UserTask extends ObjectStoreItem<String> {
 		public UserTask build() {
 			return new UserTask(userTaskId,new Date(),
 					title,userMessage, actions,
-					Status.PENDING,StringUtils.EMPTY,
+					Status.OUTSTANDING,StringUtils.EMPTY,
 					StringUtils.EMPTY,StringUtils.EMPTY,null,null);
+		}
+		
+		@Override
+		public String toString() {
+			return ReflectionToStringBuilder.toString(this);
 		}
 	}
 }

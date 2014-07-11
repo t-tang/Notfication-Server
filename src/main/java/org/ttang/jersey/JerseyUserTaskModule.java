@@ -51,7 +51,8 @@ public class JerseyUserTaskModule {
 			}
 			
 			// Reject action if the task already in progress
-			if (!userTask.isPending()) {
+			// Update the calling client with the latest image
+			if (!userTask.isOutstanding()) {
 				return UserTaskActionResponse.userTask(userTask);
 			}
 
@@ -71,7 +72,6 @@ public class JerseyUserTaskModule {
 			}
 			// Broadcast the actioned message
 			messageBroadcaster.broadcast(Ember.wrap(actionedUserTask));
-
 
 			// TODO: perform the action
 			Thread.sleep(2000);
